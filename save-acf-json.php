@@ -51,8 +51,8 @@ function bea_acf_json_save_point( $path ) {
 		mkdir( WP_CONTENT_DIR . $path, 0777, true );
 	}
 
-	$paths_save_acf_json = get_option('paths_save_acf_json');
-	if(empty($paths_save_acf_json)) {
+	$paths_save_acf_json = get_option( 'paths_save_acf_json' );
+	if ( empty( $paths_save_acf_json ) ) {
 		update_option( 'paths_save_acf_json', array( WP_CONTENT_DIR . $path ) );
 	} else {
 		update_option( 'paths_save_acf_json', array_merge( $paths_save_acf_json, array( WP_CONTENT_DIR . $path ) ) );
@@ -63,17 +63,16 @@ function bea_acf_json_save_point( $path ) {
 
 }
 
-add_action('plugins_loaded', 'bea_acf_json_after_plugins_loaded');
+add_action( 'plugins_loaded', 'bea_acf_json_after_plugins_loaded' );
 function bea_acf_json_after_plugins_loaded() {
 	add_filter( 'acf/settings/load_json', 'bea_acf_json_load' );
 }
-function bea_acf_json_load( $paths ) {
-	$paths_save_acf_json = get_option('paths_save_acf_json');
 
-	if( $paths_save_acf_json )
-	{
-		foreach( $paths_save_acf_json as $path )
-		{
+function bea_acf_json_load( $paths ) {
+	$paths_save_acf_json = get_option( 'paths_save_acf_json' );
+
+	if ( $paths_save_acf_json ) {
+		foreach ( $paths_save_acf_json as $path ) {
 			$paths[] = $path;
 		}
 	}

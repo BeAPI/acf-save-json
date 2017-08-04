@@ -9,5 +9,8 @@
       "email": "technique@beapi.fr"
     }
   ],
-  "type" : "wordpress-plugin"
+  "type" : "wordpress-muplugin",
+  "require" : {
+    "composer/installers" : "~1.0"
+  }
 }

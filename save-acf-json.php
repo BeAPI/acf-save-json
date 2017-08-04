@@ -2,7 +2,7 @@
 /*
 Plugin Name: BEA ACF JSON save/load
 Plugin URI:
-Description:
+Description: Choose folder for ACF save auto json field_group
 Author: https://beapi.fr
 Version: 1.0.0
 Author URI: https://beapi.fr

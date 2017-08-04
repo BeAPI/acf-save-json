@@ -8,8 +8,8 @@ Version: 1.0.0
 Author URI: https://beapi.fr
 */
 
-add_action( 'acf/render_field_group_settings', 'bea_acf_render_field_group_settings' );
-function bea_acf_render_field_group_settings( $field_group ) {
+add_action( 'acf/render_field_group_settings', 'bea_acf_json_render_field_group_settings' );
+function bea_acf_json_render_field_group_settings( $field_group ) {
 	// description
 	acf_render_field_wrap( array(
 		'label'        => __( 'Choose path save json', 'acf' ),
@@ -20,7 +20,6 @@ function bea_acf_render_field_group_settings( $field_group ) {
 		'value'        => $field_group['save_json'],
 	) );
 }
-
 
 add_filter( 'acf/settings/save_json', 'bea_acf_json_save_point' );
 function bea_acf_json_save_point( $path ) {
@@ -64,7 +63,10 @@ function bea_acf_json_save_point( $path ) {
 
 }
 
-add_filter( 'acf/settings/load_json', 'bea_acf_json_load' );
+add_action('plugins_loaded', 'bea_acf_json_after_plugins_loaded');
+function bea_acf_json_after_plugins_loaded() {
+	add_filter( 'acf/settings/load_json', 'bea_acf_json_load' );
+}
 function bea_acf_json_load( $paths ) {
 	$paths_save_acf_json = get_option('paths_save_acf_json');
 

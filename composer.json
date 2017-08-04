@@ -1,0 +1,13 @@
+{
+  "name": "bea/acf-save-json",
+  "description": "Choose folder for ACF save auto json field_group",
+  "minimum-stability": "stable",
+  "license": "GPL-2.0",
+  "authors": [
+    {
+      "name": "BeAPI",
+      "email": "technique@beapi.fr"
+    }
+  ],
+  "type" : "wordpress-plugin"
+}

@@ -30,7 +30,7 @@ class BEA_ACF_SAVE_JSON_PHP {
 
 	public function __construct() {
 		add_action( 'acf/render_field_group_settings', array( __CLASS__, 'acf_json_render_field_group_settings' ) );
-		add_filter( 'acf/settings/save_json', array( __CLASS__, 'acf_json_save_point' ) );
+		add_filter( 'acf/settings/save_json', array( __CLASS__, 'acf_json_save_point' ), 99 );
 		add_filter( 'acf/settings/save_json', array( __CLASS__, 'acf_save_php' ) );
 		add_action( 'plugins_loaded', array( __CLASS__, 'acf_json_after_plugins_loaded' ) );
 	}

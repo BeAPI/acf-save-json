@@ -29,10 +29,21 @@ Author URI: https://beapi.fr
 class BEA_ACF_SAVE_JSON_PHP {
 
 	public function __construct() {
+		add_action( 'wp_loaded', array( __CLASS__, 'replace_acf_field_group_hooks' ) );
 		add_action( 'acf/render_field_group_settings', array( __CLASS__, 'acf_json_render_field_group_settings' ) );
 		add_filter( 'acf/settings/save_json', array( __CLASS__, 'acf_json_save_point' ), 99 );
 		add_filter( 'acf/settings/save_json', array( __CLASS__, 'acf_save_php' ) );
 		add_action( 'plugins_loaded', array( __CLASS__, 'acf_json_after_plugins_loaded' ) );
+	}
+
+	public static function replace_acf_field_group_hooks() {
+		remove_action( 'acf/update_field_group', array( acf()->json, 'update_field_group' ), 10, 1 );
+		remove_action( 'acf/duplicate_field_group', array( acf()->json, 'update_field_group' ), 10, 1 );
+		remove_action( 'acf/untrash_field_group', array( acf()->json, 'update_field_group' ), 10, 1 );
+
+		add_action( 'acf/update_field_group', array( __CLASS__, 'acf_update_field_group' ), 10, 1 );
+		add_action( 'acf/duplicate_field_group', array( __CLASS__, 'acf_update_field_group' ), 10, 1 );
+		add_action( 'acf/untrash_field_group', array( __CLASS__, 'acf_update_field_group' ), 10, 1 );
 	}
 
 	/**
@@ -130,11 +141,6 @@ class BEA_ACF_SAVE_JSON_PHP {
 			$path = '/' . $path;
 		}
 
-		// Make dir if does not exist.
-		if ( ! file_exists( WP_CONTENT_DIR . $path ) ) {
-			wp_mkdir_p( dirname( WP_CONTENT_DIR . $path ) );
-		}
-
 		self::acf_export_php( $_POST['acf_field_group'], WP_CONTENT_DIR . $path );
 
 		return WP_CONTENT_DIR . $path;
@@ -191,6 +197,8 @@ class BEA_ACF_SAVE_JSON_PHP {
 		// prepare for export
 		$field_group = acf_prepare_field_group_for_export( $field_group );
 
+		$file_name = sanitize_title_with_dashes( $field_group['title'] ) . '_export.php';
+
 		// code
 		$code = var_export( $field_group, true );
 
@@ -203,7 +211,24 @@ class BEA_ACF_SAVE_JSON_PHP {
 		// echo
 		$string = "<?php \nif( function_exists('acf_add_local_field_group') ):" . "\r\n" . "\r\nacf_add_local_field_group({$code});" . "\r\n" . "\r\nendif;";
 
-		file_put_contents( $path, $string, LOCK_EX );
+		//make dir if it doesn't exist
+		if ( wp_mkdir_p( $path ) ) {
+			file_put_contents( $path . '/' . $file_name, $string, LOCK_EX );
+		}
+	}
+
+	public static function acf_update_field_group( $field_group ) {
+		// validate
+		if ( ! acf_get_setting( 'json' ) ) {
+			return;
+		}
+		$field_group['key'] = sanitize_title_with_dashes( $field_group['title'] ) . '_export';
+
+		// get fields
+		$field_group['fields'] = acf_get_fields( $field_group );
+
+		// save file
+		acf_write_json_field_group( $field_group );
 	}
 
 }

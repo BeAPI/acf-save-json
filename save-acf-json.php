@@ -4,7 +4,7 @@ Plugin Name: BEA ACF Save JSON/PHP
 Plugin URI: https://github.com/BeAPI/acf-save-json
 Description: Choose folder for ACF save auto json field_group
 Author: https://beapi.fr
-Version: 1.0.2
+Version: 1.0.3
 Author URI: https://beapi.fr
 
  ----

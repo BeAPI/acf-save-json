@@ -28,6 +28,8 @@ Author URI: https://beapi.fr
 
 class BEA_ACF_SAVE_JSON_PHP {
 
+	private static $json_file_name;
+
 	public function __construct() {
 		add_action( 'wp_loaded', array( __CLASS__, 'replace_acf_field_group_hooks' ) );
 		add_action( 'acf/render_field_group_settings', array( __CLASS__, 'acf_json_render_field_group_settings' ) );
@@ -55,18 +57,20 @@ class BEA_ACF_SAVE_JSON_PHP {
 	public static function acf_json_render_field_group_settings( $field_group ) {
 		acf_render_field_wrap( array(
 			'label'        => __( 'Choose path save json (relative to WP_CONTENT_DIR)', 'acf' ),
-			'instructions' => __( 'ex : plugins/ or themes/xxx/', 'acf' ),
+			'instructions' => __( 'ex : themes/acf/json/filename<strong>.json</strong>', 'acf' ),
 			'type'         => 'text',
 			'name'         => 'save_json',
+			'placeholder'  => 'path/.../acf-group-file-name.php',
 			'prefix'       => 'acf_field_group',
 			'value'        => $field_group['save_json'],
 		) );
 
 		acf_render_field_wrap( array(
 			'label'        => __( 'Choose path save php (relative to WP_CONTENT_DIR)', 'acf' ),
-			'instructions' => __( 'ex : plugins/ or themes/xxx/', 'acf' ),
+			'instructions' => __( 'ex : themes/acf/php/filename<strong>.php</strong>', 'acf' ),
 			'type'         => 'text',
 			'name'         => 'save_php',
+			'placeholder'  => 'path/.../acf-group-file-name.php',
 			'prefix'       => 'acf_field_group',
 			'value'        => $field_group['save_php'],
 		) );
@@ -82,68 +86,28 @@ class BEA_ACF_SAVE_JSON_PHP {
 	 */
 	public static function acf_json_save_point( $path ) {
 
-		if ( ! isset( $_POST['acf_field_group']['save_json'] ) ) {
+		$pathinfo = self::get_path( 'json' );
+
+		if ( ! $pathinfo ) {
 			return $path;
 		}
-
-		$path_save_json_by_field_group = $_POST['acf_field_group']['save_json'];
-
-		if ( empty( $path_save_json_by_field_group ) ) {
-			return $path;
-		}
-
-		// remove trailing slash.
-		$path = untrailingslashit( $path_save_json_by_field_group );
-
-		if ( false !== strpos( $path, '/content' ) ) {
-			$path = str_replace( '/content', '', $path );
-		}
-
-		if ( '/' !== substr( $path, 0, 1 ) ) {
-			$path = '/' . $path;
-		}
-
+		$path = $pathinfo['dirname'];
 		// Make dir if does not exist.
 		if ( ! file_exists( WP_CONTENT_DIR . $path ) ) {
 			wp_mkdir_p( WP_CONTENT_DIR . $path );
-		}
-
-		$paths_save_acf_json = get_option( 'paths_save_acf_json' );
-		if ( empty( $paths_save_acf_json ) ) {
-			update_option( 'paths_save_acf_json', array( WP_CONTENT_DIR . $path ) );
-		} else {
-			update_option( 'paths_save_acf_json', array_merge( $paths_save_acf_json, array( WP_CONTENT_DIR . $path ) ) );
 		}
 
 		return WP_CONTENT_DIR . $path;
 	}
 
 	public static function acf_save_php( $path ) {
-
-		if ( ! isset( $_POST['acf_field_group']['save_php'] ) ) {
-			return $path;
+		$path = self::get_path( 'php' );
+		if ( 'php' !== $path['extension'] ) {
+			$path['extension'] = 'php';
 		}
+		self::acf_export_php( $_POST['acf_field_group'], WP_CONTENT_DIR . $path['origin'], $path['filename'] . '.' . $path['extension'] );
 
-		$path_save_php_by_field_group = $_POST['acf_field_group']['save_php'];
-
-		if ( empty( $path_save_php_by_field_group ) ) {
-			return $path;
-		}
-
-		// remove trailing slash.
-		$path = untrailingslashit( $path_save_php_by_field_group );
-
-		if ( false !== strpos( $path, '/content' ) ) {
-			$path = str_replace( '/content', '', $path );
-		}
-
-		if ( '/' !== substr( $path, 0, 1 ) ) {
-			$path = '/' . $path;
-		}
-
-		self::acf_export_php( $_POST['acf_field_group'], WP_CONTENT_DIR . $path );
-
-		return WP_CONTENT_DIR . $path;
+		return WP_CONTENT_DIR . $path['origin'];
 	}
 
 	/**
@@ -162,22 +126,20 @@ class BEA_ACF_SAVE_JSON_PHP {
 	 * @return array
 	 */
 	public static function acf_json_load( $paths ) {
-		$paths_save_acf_json = get_option( 'paths_save_acf_json' );
+		$groups = acf_get_field_groups();
 
-		if ( $paths_save_acf_json ) {
-			foreach ( $paths_save_acf_json as $path ) {
-				$paths[] = $path;
-			}
+		if ( is_file( WP_CONTENT_DIR . $groups[0]['save_json'] ) ) {
+			$paths[] = WP_CONTENT_DIR . $groups[0]['save_json'];
 		}
 
 		return $paths;
+
 	}
 
 	/*
 	 * Export PHP
 	 */
-	public static function acf_export_php( $field_group, $path ) {
-
+	public static function acf_export_php( $field_group, $path, $file_name ) {
 		// replace
 		$str_replace = array(
 			"  "         => "\t",
@@ -197,8 +159,7 @@ class BEA_ACF_SAVE_JSON_PHP {
 		// prepare for export
 		$field_group = acf_prepare_field_group_for_export( $field_group );
 
-		$file_name = sanitize_title_with_dashes( $field_group['title'] ) . '_export.php';
-
+		$path = substr( $path, 0, strrpos( $path, '/' ) );
 		// code
 		$code = var_export( $field_group, true );
 
@@ -210,25 +171,64 @@ class BEA_ACF_SAVE_JSON_PHP {
 
 		// echo
 		$string = "<?php \nif( function_exists('acf_add_local_field_group') ):" . "\r\n" . "\r\nacf_add_local_field_group({$code});" . "\r\n" . "\r\nendif;";
-
 		//make dir if it doesn't exist
 		if ( wp_mkdir_p( $path ) ) {
 			file_put_contents( $path . '/' . $file_name, $string, LOCK_EX );
 		}
 	}
 
+
+
 	public static function acf_update_field_group( $field_group ) {
+		$path = self::get_path( 'json' );
+
 		// validate
 		if ( ! acf_get_setting( 'json' ) ) {
 			return;
 		}
-		$field_group['key'] = sanitize_title_with_dashes( $field_group['title'] ) . '_export';
 
+		$field_group['key'] = $path['filename'];
 		// get fields
 		$field_group['fields'] = acf_get_fields( $field_group );
 
 		// save file
 		acf_write_json_field_group( $field_group );
+	}
+
+	/**
+	 * verify path type, slashes and put data in a pathinfo array
+	 * @param $type (json | php)
+	 *
+	 * @return bool|array
+	 * @author Aymene Bourafai
+	 */
+	private static function get_path( $type ) {
+		if ( 'json' == $type ) {
+			$path = acf_get_field_groups()[0]['save_json'];
+		} elseif ( 'php' == $type ) {
+			$path = acf_get_field_groups()[0]['save_php'];
+		} else {
+			return false;
+		}
+
+		// remove trailing slash.
+		$path = untrailingslashit( $path );
+
+		if ( false !== strpos( $path, '/content' ) ) {
+			$path = str_replace( '/content', '', $path );
+		}
+
+		if ( '/' !== substr( $path, 0, 1 ) ) {
+			$path = '/' . $path;
+		}
+
+
+		$pathinfo             = pathinfo( $path );
+		$pathinfo['origin']   = $path;
+		$pathinfo['filename'] = sanitize_file_name( $pathinfo['filename'] );
+		$pathinfo['full']     = WP_CONTENT_DIR . $path;
+
+		return $pathinfo;
 	}
 
 }

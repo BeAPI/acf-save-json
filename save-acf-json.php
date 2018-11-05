@@ -101,13 +101,17 @@ class BEA_ACF_SAVE_JSON_PHP {
 	}
 
 	public static function acf_save_php( $path ) {
-		$path = self::get_path( 'php' );
-		if ( 'php' !== $path['extension'] ) {
-			$path['extension'] = 'php';
-		}
-		self::acf_export_php( $_POST['acf_field_group'], WP_CONTENT_DIR . $path['origin'], $path['filename'] . '.' . $path['extension'] );
+		$php_path  = self::get_path( 'php' );
+		$json_path = self::get_path( 'json' );
 
-		return WP_CONTENT_DIR . $path['origin'];
+		$field_group = acf_get_field_groups()[0];
+
+		$field_group['save_php']  = $php_path['rendered_path'];
+		$field_group['save_json'] = $json_path['rendered_path'];
+
+		self::acf_export_php( $field_group, WP_CONTENT_DIR . $php_path['origin'], $php_path['filename'] . '.' . $php_path['extension'] );
+
+		return WP_CONTENT_DIR . $php_path['origin'];
 	}
 
 	/**
@@ -171,6 +175,12 @@ class BEA_ACF_SAVE_JSON_PHP {
 
 		// echo
 		$string = "<?php \nif( function_exists('acf_add_local_field_group') ):" . "\r\n" . "\r\nacf_add_local_field_group({$code});" . "\r\n" . "\r\nendif;";
+
+		// check secure path
+		if ( strpos( realpath( $path ), WP_CONTENT_DIR ) === false ) {
+			return;
+		}
+
 		//make dir if it doesn't exist
 		if ( wp_mkdir_p( $path ) ) {
 			file_put_contents( $path . '/' . $file_name, $string, LOCK_EX );
@@ -178,16 +188,19 @@ class BEA_ACF_SAVE_JSON_PHP {
 	}
 
 
-
 	public static function acf_update_field_group( $field_group ) {
-		$path = self::get_path( 'json' );
-
 		// validate
 		if ( ! acf_get_setting( 'json' ) ) {
 			return;
 		}
 
-		$field_group['key'] = $path['filename'];
+		$json_path = self::get_path( 'json' );
+		$php_path  = self::get_path( 'php' );
+
+		$field_group['save_php']  = $php_path['rendered_path'];
+		$field_group['save_json'] = $json_path['rendered_path'];
+
+		$field_group['key'] = $json_path['filename'];
 		// get fields
 		$field_group['fields'] = acf_get_fields( $field_group );
 
@@ -197,6 +210,7 @@ class BEA_ACF_SAVE_JSON_PHP {
 
 	/**
 	 * verify path type, slashes and put data in a pathinfo array
+	 *
 	 * @param $type (json | php)
 	 *
 	 * @return bool|array
@@ -223,10 +237,13 @@ class BEA_ACF_SAVE_JSON_PHP {
 		}
 
 
-		$pathinfo             = pathinfo( $path );
-		$pathinfo['origin']   = $path;
-		$pathinfo['filename'] = sanitize_file_name( $pathinfo['filename'] );
-		$pathinfo['full']     = WP_CONTENT_DIR . $path;
+		$pathinfo = pathinfo( $path );
+
+		$pathinfo['origin']        = $path;
+		$pathinfo['extension']     = $type;
+		$pathinfo['filename']      = sanitize_file_name( $pathinfo['filename'] );
+		$pathinfo['full']          = WP_CONTENT_DIR . $path;
+		$pathinfo['rendered_path'] = $pathinfo['dirname'] . '/' . $pathinfo['filename'] . '.' . $pathinfo['extension'];
 
 		return $pathinfo;
 	}
